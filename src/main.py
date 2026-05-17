@@ -3,7 +3,7 @@ import argparse
 from datetime import datetime, date, timedelta
 
 from ai_writer import generate_post
-from post_exporter import export_posts
+from post_exporter import export_posts, export_raw_facts
 from wikimedia_collector import collect_default_facts
 
 
@@ -113,6 +113,12 @@ def parse_args() -> argparse.Namespace:
         help="Randomize collected facts before applying --max-posts.",
     )
     
+    parser.add_argument(
+        "--save-raw",
+        action="store_true",
+        help="Save selected raw facts to a text file before AI generation.",
+    )
+    
     return parser.parse_args()
 
 
@@ -169,6 +175,13 @@ def build_output_path(target_date: date, categories: list[str]) -> str:
 
 #     return facts[:max_posts]
 
+def build_raw_output_path(target_date: date, categories: list[str]) -> str:
+    if len(categories) == 1:
+        category_label = categories[0]
+    else:
+        category_label = "mixed"
+
+    return f"output/{target_date.isoformat()}/raw_{category_label}.txt"
 
 def select_facts(
     facts: list,
@@ -207,6 +220,26 @@ def print_dry_run_facts(facts: list) -> None:
     print(f"Dry run complete. Displayed {len(facts)} facts.")
 
 
+def dedupe_facts(facts: list) -> list:
+    seen = set()
+    unique_facts = []
+
+    for fact in facts:
+        key = (
+            fact.category,
+            fact.title,
+            fact.year,
+            fact.source_url,
+        )
+
+        if key in seen:
+            continue
+
+        seen.add(key)
+        unique_facts.append(fact)
+
+    return unique_facts
+
 def process_date(
     target_date: date,
     categories: list[str],
@@ -215,6 +248,7 @@ def process_date(
     tone: str,
     dry_run: bool,
     randomize: bool,
+    save_raw: bool,
 ) -> None:
     output_path = build_output_path(target_date, categories)
 
@@ -238,6 +272,11 @@ def process_date(
         return
 
     collected_count = len(facts)
+    
+    
+    facts = dedupe_facts(facts)
+    deduped_count = len(facts)
+
     facts = select_facts(
         facts=facts,
         max_posts=max_posts,
@@ -245,6 +284,13 @@ def process_date(
     )
 
     print(f"Collected {collected_count} facts.")
+
+    duplicates_removed = collected_count - deduped_count
+
+    if duplicates_removed > 0:
+        print(f"Removed {duplicates_removed} duplicate facts.")
+        
+    
 
     if randomize:
         print("Randomized collected facts before selection.")
@@ -254,6 +300,16 @@ def process_date(
     else:
         print(f"Using {len(facts)} facts.")
 
+    if save_raw:
+        raw_output_path = build_raw_output_path(target_date, categories)
+        export_raw_facts(
+            facts=facts,
+            output_path=raw_output_path,
+            target_date=target_date,
+            categories=categories,
+        )
+        print(f"Raw facts written to: {raw_output_path}")
+        
     if dry_run:
         print_dry_run_facts(facts)
         return
@@ -306,6 +362,7 @@ def main() -> None:
             tone=args.tone,
             dry_run=args.dry_run,
             randomize=args.random,
+            save_raw=args.save_raw,
         )
 
     print("")
