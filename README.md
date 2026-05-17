@@ -382,7 +382,5 @@ If this saved you some time and you feel like tossing a coffee my way, it is alw
 
 
 ## License
+MIT
 
-Add your preferred license here.
-
-If unsure, MIT is a common choice for small open-source utility projects.
