@@ -1,46 +1,66 @@
 # Social Media Fact Post Creator
 
-A small Python tool that collects factual "On This Day" style data, sends it to OpenAI, and writes copy/paste-ready social posts to plain text files.
+A Python tool that collects sourced factual data and turns it into copy/paste-ready social media posts.
 
-No social media posting.
+No auto-posting.
 No scheduling.
-No Facebook integration.
-No platform automation.
+No Facebook API.
+No platform integrations.
 
 Just:
 
 ```text
-facts in → AI-written posts out → copy/paste manually
+collect facts → generate posts → save .txt files → copy/paste manually
 ```
 
-## What It Does
+## Current Status
 
-The app currently uses Wikimedia/Wikipedia's On This Day feed to collect factual data, then asks OpenAI to turn that data into short Facebook-style posts.
+Working MVP.
 
-Generated posts include:
+The current version collects "On This Day" style data from Wikimedia/Wikipedia, sends selected facts to OpenAI, and writes social-ready posts to plain text files.
 
-- a short written post
+The generated posts include:
+
+- short post text
 - hashtags
-- a source link
+- source links
 - dated output folders
-- category-specific output files
+- optional raw fact files for auditing
 
-## Current Features
+## Why This Exists
+
+The goal is to quickly create reviewable social media post drafts based on sourced facts.
+
+This is useful for:
+
+- music trivia pages
+- movie trivia pages
+- history posts
+- famous birthday posts
+- "On This Day" style content
+- general Facebook/social media engagement posts
+
+The tool does not publish anything. You stay in control and review before posting.
+
+## Features
 
 - Generate posts for today's date by default
-- Generate posts for a specific month and day
+- Generate posts for a specific month/day
 - Generate posts across a date range
-- Select one or more fact categories
-- Select post tone
-- Limit total number of generated posts
-- Randomize selected facts before generation
-- Dry-run mode to preview facts without using OpenAI
-- Plain `.txt` output for easy copy/paste
-- Strict output format requiring hashtags and source links
+- Select one or more categories
+- Select a writing tone
+- Limit total generated posts
+- Randomize selected facts
+- Preview facts with dry-run mode
+- Save raw selected facts
+- Save posts as plain `.txt`
+- Include source links
+- Enforce hashtag output
+- Keep generated output out of Git
 
 ## Current Data Source
 
-The current version uses Wikimedia/Wikipedia On This Day data.
+This version uses Wikimedia/Wikipedia's On This Day feed.
 
 Supported categories:
 
@@ -61,6 +81,12 @@ events
 births
 ```
 
+## Requirements
+
+- Python 3.10+
+- OpenAI API key
+- Internet connection
+
 ## Project Structure
 
 ```text
@@ -70,7 +96,8 @@ sm-post-creator/
 │   └── YYYY-MM-DD/
 │       ├── mixed.txt
 │       ├── births.txt
-│       └── events.txt
+│       ├── events.txt
+│       └── raw_births.txt
 │
 ├── src/
 │   ├── ai_writer.py
@@ -80,7 +107,6 @@ sm-post-creator/
 │   ├── post_exporter.py
 │   └── wikimedia_collector.py
 │
-├── .env
 ├── .env.example
 ├── .gitignore
 ├── requirements.txt
@@ -119,7 +145,7 @@ Create a `.env` file:
 cp .env.example .env
 ```
 
-On Windows PowerShell, use:
+On Windows PowerShell:
 
 ```bash
 copy .env.example .env
@@ -133,7 +159,19 @@ OPENAI_MODEL=gpt-4.1-mini
 APP_USER_AGENT=FactPostGenerator/0.1 (your-email@example.com)
 ```
 
-## Run the App
+### About `APP_USER_AGENT`
+
+`APP_USER_AGENT` identifies your script when it requests Wikimedia data.
+
+It is not a secret key.
+
+Example:
+
+```env
+APP_USER_AGENT=FactPostGenerator/0.1 (your-email@example.com)
+```
+
+## Basic Usage
 
 Generate posts for today's date using the default categories:
 
@@ -177,13 +215,13 @@ output/2026-05-20/births.txt
 
 ## Dry Run
 
-Preview facts without calling OpenAI or writing output:
+Preview selected facts without calling OpenAI or writing generated post output:
 
 ```bash
 python3 src/main.py --category births --month 5 --day 18 --limit 10 --max-posts 3 --dry-run
 ```
 
-Dry-run mode is useful before batch generation so you can inspect source facts before spending API calls.
+Dry-run mode is useful before batch generation so you can inspect facts before spending API calls.
 
 ## Randomize Facts
 
@@ -194,6 +232,23 @@ python3 src/main.py --category births --month 5 --day 18 --limit 10 --max-posts 
 ```
 
 Useful when the same top results keep appearing.
+
+## Save Raw Facts
+
+Save selected raw facts before AI generation:
+
+```bash
+python3 src/main.py --category births --month 5 --day 18 --limit 10 --max-posts 3 --random --save-raw
+```
+
+Example output:
+
+```text
+output/2026-05-18/raw_births.txt
+output/2026-05-18/births.txt
+```
+
+Raw fact files are useful for auditing generated posts later.
 
 ## Tone Options
 
@@ -246,7 +301,7 @@ output/2026-05-18/births.txt
 output/2026-05-18/events.txt
 ```
 
-Each post includes:
+Each generated post includes:
 
 ```text
 POST #
@@ -277,13 +332,25 @@ python3 src/main.py --category births --month 5 --day 18 --limit 10 --max-posts 
 Generate a small real batch:
 
 ```bash
-python3 src/main.py --category births --month 5 --day 18 --limit 10 --max-posts 3 --random
+python3 src/main.py --category births --month 5 --day 18 --limit 10 --max-posts 3 --random --save-raw
 ```
 
 Batch a few days:
 
 ```bash
-python3 src/main.py --start-date 2026-05-18 --end-date 2026-05-20 --category births --limit 10 --max-posts 3 --random
+python3 src/main.py --start-date 2026-05-18 --end-date 2026-05-20 --category births --limit 10 --max-posts 3 --random --save-raw
+```
+
+## Git Ignore Notes
+
+Generated output should not be committed.
+
+Recommended `.gitignore` section:
+
+```gitignore
+# Generated output
+output/
+!output/.gitkeep
 ```
 
 ## Important Notes
@@ -294,20 +361,28 @@ Still, always review generated posts before publishing.
 
 This tool creates drafts, not final truth. Source links are included so posts can be checked quickly.
 
-## Suggested Next Improvements
+## Roadmap
 
-Possible future upgrades:
+Possible future improvements:
 
-- save raw collected facts to text files
-- add MusicBrainz collector for music-specific facts
-- add movie data collector
-- add duplicate detection
-- add per-category tone defaults
-- add output summaries
-- add tests for collector/exporter behavior
+- MusicBrainz collector for music-specific posts
+- movie data collector
+- duplicate history across previous runs
+- per-category tone defaults
+- output summaries
+- tests for collector/exporter behavior
+- optional markdown export
+- optional CSV export
 
-## Current Status
+## Support
 
-Working MVP.
+If this saved you some time and you feel like tossing a coffee my way, it is always appreciated:
 
-The current version is useful for generating copy/paste social posts from sourced historical and birthday data.
+[Buy me a coffee via PayPal](https://paypal.me/edwynsaunders1)
+
+
+## License
+
+Add your preferred license here.
+
+If unsure, MIT is a common choice for small open-source utility projects.
