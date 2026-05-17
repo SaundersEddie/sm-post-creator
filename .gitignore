@@ -1,6 +1,9 @@
 .env
 __pycache__/
 *.pyc
-output/*.txt
 .venv/
 venv/
+
+# Generated output
+output/
+!output/.gitkeep
